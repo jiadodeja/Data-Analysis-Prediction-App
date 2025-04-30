@@ -21,6 +21,7 @@ global_features = []
 
 # --- Dash app setup ---
 app = dash.Dash(__name__)
+server = app.server
 
 # --- Layout ---
 app.layout = html.Div([
