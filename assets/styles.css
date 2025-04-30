@@ -1,0 +1,174 @@
+/* Apply this font to every HTML element in the Dash app */
+* {
+  font-family: 'Times New Roman', Times, serif;
+}
+
+/* Container around upload section */
+.upload-container {
+  padding: 10px;
+  background-color: #f9f9f9;
+}
+
+/* Heading above the upload box */
+.upload-header {
+  margin: 0;
+  font-size: 1.2rem;
+  text-align: center;
+}
+
+/* The dashed “drop zone” upload box */
+.upload-box {
+  width: 100%;
+  height: 60px;
+  line-height: 60px;
+  border: 1px dashed #ccc;
+  border-radius: 5px;
+  background-color: #f2f2f2;
+  text-align: center;
+  margin-top: 10px;
+  cursor: pointer;
+}
+
+/* Container around the target selector */
+.target-selector {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+}
+
+/* “Select Target:” label */
+.target-label {
+  margin-right: 10px;
+  font-weight: bold;
+}
+
+/* The target dropdown itself */
+.target-dropdown {
+  width: 250px;
+}
+/* Container around upload section */
+.upload-container {
+  padding: 10px;
+  background-color: #f9f9f9;
+}
+
+/* Heading above the upload box */
+.upload-header {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+/* The dashed “drop zone” upload box */
+.upload-box {
+  width: 100%;
+  height: 60px;
+  line-height: 60px;
+  border: 1px dashed #ccc;
+  border-radius: 5px;
+  background-color: #f2f2f2;
+  text-align: center;
+  margin-top: 10px;
+  cursor: pointer;
+}
+
+/* Container around the target selector */
+.target-selector {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  background-color: lightgray;
+}
+
+/* “Select Target:” label */
+.target-label {
+  margin-right: 10px;
+  font-weight: bold;
+}
+
+/* The target dropdown itself */
+.target-dropdown {
+  width: 250px;
+}
+
+/* --- Train Section Styling --- */
+.train-section {
+  padding: 10px;
+}
+
+/* Center the heading */
+.train-section .train-heading {
+  text-align: center;
+}
+
+/* Increase bottom margin under the checklist */
+.train-section .train-checklist-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 30px;  /* was 10px—feel free to adjust */
+}
+
+/* Or add top margin above the button instead */
+.train-section .train-button-container {
+  text-align: center;
+  margin-top: 30px;     /* new: pushes the button down */
+}
+
+
+#train-button {
+  width: 220px;
+  height: 30px;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 14px;
+}
+
+
+/* Center the “Model trained…” text */
+.train-output-container {
+  text-align: center;
+  padding: 10px;
+}
+
+/* Predict section */
+.predict-section {
+  padding: 10px;
+}
+
+/* Center the Predict heading */
+.predict-section .predict-heading {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+/* Layout input + button side-by-side and centered */
+.predict-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;  /* space between input and button */
+}
+
+.predict-output-inline {
+  display: inline-block;
+  margin-left: 10px;
+  /* adjusts vertical alignment if needed */
+  align-self: center;
+}
+
+.predict-button{
+  width: 80px;
+  height: 26px;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 14px;
+}
+
+/* Optionally size the input */
+.predict-input {
+  width: 250px;
+  height: 20px;
+}
+
+/* Center the prediction result text */
+.predict-output-container {
+  text-align: center;
+  margin-top: 10px;
+}
