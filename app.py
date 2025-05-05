@@ -18,6 +18,8 @@ import plotly.graph_objects as go  # for creating empty figures on no data
 global_df = None
 global_model = None
 global_features = []
+global_num_feats = []
+global_cat_feats = []
 
 # --- Dash app setup ---
 app = dash.Dash(__name__)
@@ -107,7 +109,6 @@ app.layout = html.Div([
     html.Hr(),
 
     # 5. Predict
-    # 5. Predict
     html.Div([
         html.Div([
             dcc.Input(
@@ -117,7 +118,6 @@ app.layout = html.Div([
                 className='predict-input'
             ),
             html.Button('Predict', id='predict-button', className='predict-button'),
-            # moved predict-output inline here:
             html.Div(id='predict-output', className='predict-output-inline')
         ], className='predict-controls')
     ], className='predict-section')
@@ -250,7 +250,6 @@ def update_corr_chart(target):
             'xanchor': 'center'
         },
         font=dict(family= 'Times New Roman, Times, serif', size=12),
-        # ← use corrs, not data
         yaxis=dict(range=[0, corrs['correlation'].max() * 1.1]),
         bargap=0.4
     )
@@ -265,21 +264,16 @@ def update_corr_chart(target):
     State('feature-checklist', 'value'),
 )
 def train_model(n_clicks, target, features):
-    global global_model, global_features
+    global global_model, global_features, global_num_feats, global_cat_feats
     if not n_clicks or global_df is None or not target or not features:
         return ''
     df = global_df
     X = df[features]
     y = df[target]
 
-    num_feats = [
-        c for c in features
-        if c in X.select_dtypes(include=np.number).columns
-    ]
-    cat_feats = [
-        c for c in features
-        if c in X.select_dtypes(include=['object', 'category']).columns
-    ]
+    # split numeric vs categorical
+    num_feats = [c for c in features if c in X.select_dtypes(include=np.number).columns]
+    cat_feats = [c for c in features if c in X.select_dtypes(include=['object', 'category']).columns]
 
     num_pipe = Pipeline([
         ('imp', SimpleImputer(strategy='median')),
@@ -300,45 +294,55 @@ def train_model(n_clicks, target, features):
 
     pipeline.fit(X, y)
     score = pipeline.score(X, y)
+
+    # store globals for prediction
     global_model = pipeline
     global_features = features
+    global_num_feats = num_feats
+    global_cat_feats = cat_feats
+
     return f'The R² score is: {score:.3f}'
+
 
 # --- Callback: predict ---
 @app.callback(
     Output('predict-output', 'children'),
     Input('predict-button', 'n_clicks'),
     State('predict-input', 'value'),
-    State('target-dropdown', 'value')         # ← grab the target name
+    State('target-dropdown', 'value')
 )
 def predict(n_clicks, input_str, target):
     if not n_clicks or global_model is None or not input_str or not target:
         return ''
-    try:
-        # split & strip
-        raw_vals = [v.strip() for v in input_str.split(',')]
-        if len(raw_vals) != len(global_features):
-            return f'Expected {len(global_features)} values, got {len(raw_vals)}'
 
-        # build typed row
-        row = {}
-        for feat, val in zip(global_features, raw_vals):
-            if np.issubdtype(global_df[feat].dtype, np.number):
+    raw_vals = [v.strip() for v in input_str.split(',')]
+    if len(raw_vals) != len(global_features):
+        return f'Expected {len(global_features)} values, got {len(raw_vals)}'
+
+    row = {}
+    for feat, val in zip(global_features, raw_vals):
+        if feat in global_num_feats:
+            try:
                 row[feat] = float(val)
-            else:
-                row[feat] = val
+            except ValueError:
+                row[feat] = np.nan  # let imputer fill
+        else:
+            row[feat] = val
 
-        # predict
-        X_new = pd.DataFrame([row], columns=global_features)
+    X_new = pd.DataFrame([row], columns=global_features)
+    try:
         pred = global_model.predict(X_new)[0]
-
-        # <-- new formatted string using target name -->
-        return f'Predicted {target} is: {pred:.3f}'
-
-    except ValueError as ve:
-        return f'Value error: {ve}'
     except Exception as e:
-        return f'Error: {e}'
+        return f'Prediction error: {e}'
+
+    # notify if any numeric were imputed
+    if X_new.isna().any().any():
+        missing = X_new.columns[X_new.isna().any()].tolist()
+        return (
+            f"Non-numeric values in {missing!r} treated as missing and imputed.  "
+            f"Predicted {target} is: {pred:.3f}"
+        )
+    return f'Predicted {target} is: {pred:.3f}'
 
 # --- Run server ---
 if __name__ == '__main__':
