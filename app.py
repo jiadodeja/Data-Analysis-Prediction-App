@@ -124,6 +124,46 @@ def handle_upload(contents, filename):
         df = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
     except Exception:
         return 'Error processing file.', []
+
+    # --- Process dates & index ---
+    df['dteday'] = pd.to_datetime(df['dteday'])
+    df['year']     = df['dteday'].dt.year
+    df['month']    = df['dteday'].dt.month
+    df['day']      = df['dteday'].dt.day
+    df['weekday']  = df['dteday'].dt.weekday
+    df['is_weekend_flag'] = df['weekday'].isin([5, 6]).astype(int)
+
+    # --- Map coded values to meaningful names ---
+    season_map = {1: 'Winter', 2: 'Spring', 3: 'Summer', 4: 'Fall'}
+    if 'season' in df: df['season'] = df['season'].map(season_map)
+    yr_map = {0: '2011', 1: '2012'}
+    if 'yr' in df: df['yr'] = df['yr'].map(yr_map)
+    month_map = {i: m for i, m in enumerate(['January','February','March','April','May','June',
+                                            'July','August','September','October','November','December'], start=1)}
+    if 'mnth' in df: df['mnth'] = df['mnth'].map(month_map)
+    weekday_map = {i: d for i, d in enumerate(['Monday','Tuesday','Wednesday',
+                                              'Thursday','Friday','Saturday','Sunday'])}
+    if 'weekday' in df: df['weekday'] = df['weekday'].map(weekday_map)
+    holiday_map = {0: 'No Holiday', 1: 'Holiday'}
+    if 'holiday' in df: df['holiday'] = df['holiday'].map(holiday_map)
+    working_map = {0: 'Non-working Day', 1: 'Working Day'}
+    if 'workingday' in df: df['workingday'] = df['workingday'].map(working_map)
+    weathersit_map = {1:'Clear',2:'Mist/Cloudy',3:'Light Rain/Snow',4:'Heavy Rain/Snow'}
+    if 'weathersit' in df: df['weathersit'] = df['weathersit'].map(weathersit_map)
+
+    # Create single labeled weekend feature
+    weekend_type_map = {0: 'Weekday', 1: 'Weekend'}
+    df['day_type'] = df['is_weekend_flag'].map(weekend_type_map)
+    # drop raw flag
+    df.drop(columns=['is_weekend_flag'], inplace=True)
+
+    # --- Cast to category ---
+    cat_cols = ['season','yr','mnth','holiday','weekday','workingday',
+                'weathersit','year','month','day','day_type']
+    for col in cat_cols:
+        if col in df.columns:
+            df[col] = df[col].astype('category')
+
     global_df = df
     nums = df.select_dtypes(include=np.number).columns.tolist()
     options = [{'label': c, 'value': c} for c in nums]
@@ -139,9 +179,8 @@ def handle_upload(contents, filename):
 def update_options(target):
     if global_df is None or not target:
         return [], []
-    df = global_df
-    cat_opts = [{'label': c, 'value': c} for c in df.select_dtypes(include=['object', 'category']).columns]
-    feat_opts = [{'label': c, 'value': c} for c in df.columns if c != target]
+    cat_opts = [{'label': c, 'value': c} for c in global_df.select_dtypes(include=['category']).columns]
+    feat_opts = [{'label': c, 'value': c} for c in global_df.columns if c != target]
     return cat_opts, feat_opts
 
 # --- Callback: average bar chart ---
@@ -151,36 +190,16 @@ def update_options(target):
     Input('cat-radio', 'value')
 )
 def update_avg_chart(target, cat_col):
-    if global_df is None or not target or not cat_col:
+    if not target or not cat_col or global_df is None:
         return go.Figure()
     data = global_df.groupby(cat_col)[target].mean().reset_index()
-    fig = px.bar(
-        data,
-        x=cat_col,
-        y=target,
-        labels={target: f"{target} (average)"},
-        text_auto='.6f',
-        template='plotly_white'
-    )
-    fig.update_traces(
-        width=0.6,
-        marker_color='skyblue',
-        marker_line_color='rgba(79,129,189,1.0)',
-        marker_line_width=1.5,
-        textfont_size=12,
-        textfont_color='rgba(50,50,50,0.8)',
-        textposition='inside'
-    )
-    fig.update_layout(
-        title={
-            'text': f"<b>Average {target} by {cat_col}</b>",
-            'x': 0.5,
-            'xanchor': 'center'
-        },
-        font=dict(family='Times New Roman, Times, serif', size=12),
-        yaxis=dict(range=[0, data[target].max() * 1.1]),
-        bargap=0.4
-    )
+    fig = px.bar(data, x=cat_col, y=target,
+                 labels={target: f"{target} (average)"}, text_auto='.6f', template='plotly_white')
+    fig.update_traces(width=0.6, marker_color='skyblue', marker_line_color='rgba(79,129,189,1.0)',
+                      marker_line_width=1.5, textfont_size=12, textfont_color='rgba(50,50,50,0.8)', textposition='inside')
+    fig.update_layout(title={'text': f"<b>Average {target} by {cat_col}</b>", 'x':0.5, 'xanchor':'center'},
+                      font=dict(family='Times New Roman, Times, serif', size=12),
+                      yaxis=dict(range=[0, data[target].max()*1.1]), bargap=0.4)
     return fig
 
 # --- Callback: correlation chart ---
@@ -189,41 +208,18 @@ def update_avg_chart(target, cat_col):
     Input('target-dropdown', 'value')
 )
 def update_corr_chart(target):
-    if global_df is None or not target:
+    if not target or global_df is None:
         return go.Figure()
-    df = global_df
-    nums = df.select_dtypes(include=np.number).columns.tolist()
-    corrs = df[nums].corr()[target].abs().drop(target).reset_index()
-    corrs.columns = ['feature', 'correlation']
-    fig = px.bar(
-        corrs,
-        x='feature',
-        y='correlation',
-        labels={
-            'feature': 'Numerical Variables',
-            'correlation': 'Correlation Strength (Absolute Value)'
-        },
-        text_auto='.2f',
-        template='plotly_white'
-    )
-    fig.update_traces(
-        width=0.6,
-        marker_line_color='rgba(79,129,189,1.0)',
-        marker_line_width=1.5,
-        textfont_size=12,
-        textfont_color='white',
-        textposition='inside'
-    )
-    fig.update_layout(
-        title={
-            'text': f"<b>Correlation Strength of Numerical Variables with {target}</b>",
-            'x': 0.5,
-            'xanchor': 'center'
-        },
-        font=dict(family='Times New Roman, Times, serif', size=12),
-        yaxis=dict(range=[0, corrs['correlation'].max() * 1.1]),
-        bargap=0.4
-    )
+    nums = global_df.select_dtypes(include=np.number).columns.tolist()
+    corrs = global_df[nums].corr()[target].abs().drop(target).reset_index()
+    corrs.columns=['feature','correlation']
+    fig = px.bar(corrs, x='feature', y='correlation', text_auto='.2f', template='plotly_white',
+                 labels={'feature':'Numerical Variables','correlation':'Correlation Strength'})
+    fig.update_traces(width=0.6, marker_line_color='rgba(79,129,189,1.0)', marker_line_width=1.5,
+                      textfont_size=12, textfont_color='white', textposition='inside')
+    fig.update_layout(title={'text':f"<b>Correlation Strength of Numerical Variables with {target}</b>", 'x':0.5, 'xanchor':'center'},
+                      font=dict(family='Times New Roman, Times, serif', size=12),
+                      yaxis=dict(range=[0, corrs['correlation'].max()*1.1]), bargap=0.4)
     return fig
 
 # --- Callback: train model ---
@@ -234,57 +230,40 @@ def update_corr_chart(target):
     State('feature-checklist', 'value')
 )
 def train_model(n_clicks, target, features):
-    try:
-        if not n_clicks or global_df is None or not target or not features:
-            return ''
-        # drop rows with missing target values
-        df_train = global_df.dropna(subset=[target])
-        X = df_train[features]
-        y = df_train[target]
-        num_feats = [c for c in features if c in X.select_dtypes(include=np.number).columns]
-        cat_feats = [c for c in features if c in X.select_dtypes(include=['object', 'category']).columns]
-        num_pipe = Pipeline([('imp', SimpleImputer(strategy='median')), ('scale', StandardScaler())])
-        cat_pipe = Pipeline([('imp', SimpleImputer(strategy='constant', fill_value='')), ('ohe', OneHotEncoder(handle_unknown='ignore'))])
-        pre = ColumnTransformer([('num', num_pipe, num_feats), ('cat', cat_pipe, cat_feats)])
-        pipeline = Pipeline([('pre', pre), ('rf', RandomForestRegressor(n_estimators=100, random_state=42))])
-        pipeline.fit(X, y)
-        score = pipeline.score(X, y)
-        global global_model, global_features, global_num_feats, global_cat_feats
-        global_model = pipeline
-        global_features = features
-        global_num_feats = num_feats
-        global_cat_feats = cat_feats
-        return f'The R² score is: {score:.3f}'
-    except Exception as e:
-        return f'Error training model: {e}'
-    except Exception as e:
-        return f'Error training model: {e}'
+    if not n_clicks or global_df is None or not target or not features:
+        return ''
+    df_train = global_df.dropna(subset=[target])
+    X, y = df_train[features], df_train[target]
+    num_feats = [c for c in features if c in X.select_dtypes(include=np.number).columns]
+    cat_feats = [c for c in features if c in X.select_dtypes(include=['category']).columns]
+    num_pipe = Pipeline([('imp', SimpleImputer(strategy='median')), ('scale', StandardScaler())])
+    cat_pipe = Pipeline([('imp', SimpleImputer(strategy='most_frequent')), ('ohe', OneHotEncoder(handle_unknown='ignore'))])
+    pre = ColumnTransformer([('num', num_pipe, num_feats), ('cat', cat_pipe, cat_feats)])
+    pipeline = Pipeline([('pre', pre), ('rf', RandomForestRegressor(n_estimators=100, random_state=42))])
+    pipeline.fit(X, y)
+    score = pipeline.score(X, y)
+    global global_model, global_features, global_num_feats, global_cat_feats
+    global_model, global_features, global_num_feats, global_cat_feats = pipeline, features, num_feats, cat_feats
+    return f'The R² score is: {score:.3f}'
 
 # --- Callback: predict ---
 @app.callback(
     Output('predict-output', 'children'),
     Input('predict-button', 'n_clicks'),
-    State('predict-input', 'value'),
-    State('target-dropdown', 'value')
+    State('predict-input', 'value')
 )
-def predict(n_clicks, input_str, target):
-    if not n_clicks or global_model is None or not input_str or not target:
+def predict(n_clicks, input_str):
+    if not n_clicks or global_model is None or not input_str:
         return ''
     raw_vals = [v.strip() for v in input_str.split(',')]
     if len(raw_vals) != len(global_features):
         return f'Expected {len(global_features)} values, got {len(raw_vals)}'
     row = {}
     for feat, val in zip(global_features, raw_vals):
-        if feat in global_num_feats:
-            try:
-                row[feat] = float(val)
-            except ValueError:
-                row[feat] = np.nan
-        else:
-            row[feat] = val
+        row[feat] = float(val) if feat in global_num_feats else val
     X_new = pd.DataFrame([row], columns=global_features)
     pred = global_model.predict(X_new)[0]
-    return f'Predicted {target} is: {pred:.3f}'
+    return f'Predicted value: {pred:.3f}'
 
 # --- Run server ---
 if __name__ == '__main__':
