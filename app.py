@@ -27,7 +27,8 @@ server = app.server
 
 #  Layout 
 app.layout = html.Div([
-    html.H1('Data Analysis and Prediction App'),
+    #Jia Dodeja, Amulya Prasad, Nafisa Ahmed, Paula Gonzalez Triana
+    html.H1('Group 12 Data Analysis and Prediction App'),
 
     # 1. Upload section
     html.Div([
