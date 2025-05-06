@@ -14,18 +14,18 @@ from dash.dependencies import Input, Output, State
 import plotly.express as px
 import plotly.graph_objects as go  # for creating empty figures on no data
 
-# --- Global state ---
+# Global state
 global_df = None
 global_model = None
 global_features = []
 global_num_feats = []
 global_cat_feats = []
 
-# --- Dash app setup ---
+# Dash app setup 
 app = dash.Dash(__name__)
 server = app.server
 
-# --- Layout ---
+#  Layout 
 app.layout = html.Div([
     html.H1('Data Analysis and Prediction App'),
 
@@ -107,7 +107,7 @@ app.layout = html.Div([
     ], className='predict-section')
 ])
 
-# --- Callback: upload file ---
+#  Callback: upload file 
 @app.callback(
     Output('upload-status', 'children'),
     Output('target-dropdown', 'options'),
