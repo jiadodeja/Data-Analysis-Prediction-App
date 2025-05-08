@@ -27,7 +27,7 @@ server = app.server
 
 #  Layout 
 app.layout = html.Div([
-    #Jia Dodeja, Amulya Prasad, Nafisa Ahmed, Paula Gonzalez Triana
+    #Jia Dodeja, Amulya Prasad, Nafisa Ahmed, Paula Gonzalez Trian
     html.H1('Group 12 Data Analysis and Prediction App'),
 
     # 1. Upload section
@@ -226,7 +226,7 @@ def update_corr_chart(target):
     corrs.columns = ['feature', 'correlation']
     fig = px.bar(
         corrs, x='feature', y='correlation',
-        labels={'feature': 'Numerical Variables', 'correlation': 'Correlation Strength (Absolute)'},
+        labels={'feature': 'Numerical Variables', 'correlation': 'Correlation Strength (Absolute Value)'},
         text_auto='.2f', template='plotly_white'
     )
     fig.update_traces(
@@ -234,7 +234,7 @@ def update_corr_chart(target):
         textfont_size=12, textfont_color='white', textposition='inside'
     )
     fig.update_layout(
-        title={'text': f"<b>Correlation Strength with {target}</b>", 'x': 0.5, 'xanchor': 'center'},
+        title={'text': f"<b>Correlation Strength of Numerical Values with {target}</b>", 'x': 0.5, 'xanchor': 'center'},
         font=dict(family='Times New Roman, Times, serif', size=12),
         bargap=0.4,
         yaxis=dict(range=[0, corrs['correlation'].max() * 1.1])
@@ -263,25 +263,30 @@ def train_model(n_clicks, target, features):
     score = pipeline.score(X, y)
     global global_model, global_features, global_num_feats, global_cat_feats
     global_model, global_features, global_num_feats, global_cat_feats = pipeline, features, num_feats, cat_feats
-    return f'Regression R²: {score:.3f}'
+    return f'The R² score is: {score:.3f}'
 
 # Predict
+
 @app.callback(
-    Output('predict-output','children'),
-    Input('predict-button','n_clicks'),
-    State('predict-input','value')
+    Output('predict-output', 'children'),
+    Input('predict-button', 'n_clicks'),
+    State('predict-input', 'value'),
+    State('target-dropdown', 'value')    # <-- add this State
 )
-def predict(n_clicks, input_str):
-    if global_model is None or not n_clicks or not input_str:
+def predict(n_clicks, input_str, target):  # <-- now accepts target
+    if global_model is None or not n_clicks or not input_str or not target:
         return ''
     vals = [v.strip() for v in input_str.split(',')]
     if len(vals) != len(global_features):
         return f'Expected {len(global_features)} values, got {len(vals)}'
-    row = {feat: (float(val) if feat in global_num_feats else val)
-           for feat, val in zip(global_features, vals)}
+    row = {
+        feat: (float(val) if feat in global_num_feats else val)
+        for feat, val in zip(global_features, vals)
+    }
     X_new = pd.DataFrame([row], columns=global_features)
     pred = global_model.predict(X_new)[0]
-    return f'Predicted value: {pred:.3f}'
+    return f'Predicted {target} is: {pred:.3f}'  # <-- your formatted output
+
 
 # Run server
 if __name__=='__main__':
