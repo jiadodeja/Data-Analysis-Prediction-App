@@ -179,10 +179,11 @@ def handle_upload(contents, filename):
     Input('target-dropdown','value')
 )
 def update_options(target):
-    if global_df is None or not target:
+    if global_df is None:
         return [], []
     cat_opts = [{'label': c, 'value': c} for c in global_df.select_dtypes(include=['category']).columns]
     feat_opts = [{'label': c, 'value': c} for c in global_df.columns]
+
     return cat_opts, feat_opts
 
 # Average chart
